@@ -1,0 +1,62 @@
+Clear-Host
+ 
+#Load the input file into an Object array
+$ServerNameList = "CMRLSVRCBI1" #get-content -path $ServerListPath
+
+#Load the SQL Server SMO Assemly
+[System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.Smo") | Out-Null
+ 
+#Create a new SqlConnection object
+$objSQLConnection = New-Object System.Data.SqlClient.SqlConnection
+ 
+#For each server in the array do the following..
+foreach($ServerName in $ServerNameList)
+{
+    Try
+    {
+        $objSQLConnection.ConnectionString = "Server=$ServerName;Integrated Security=SSPI;"
+            Write-Host "Trying to connect to SQL Server instance on $ServerName..." -NoNewline
+            $objSQLConnection.Open() | Out-Null
+            Write-Host "Success."
+        $objSQLConnection.Close()
+    }
+    Catch
+    {
+        Write-Host -BackgroundColor Red -ForegroundColor White "Fail"
+        $errText =  $Error[0].ToString()
+            if ($errText.Contains("network-related"))
+        {Write-Host "Connection Error. Check server name, port, firewall."}
+ 
+        Write-Host $errText
+        continue
+    }
+ 
+    #Create a new SMO instance for this $ServerName
+    $srv = New-Object "Microsoft.SqlServer.Management.Smo.Server" $ServerName
+ 
+    #Script out each SQL Server Agent Job for the server
+    foreach ($Job in $srv.JobServer.Jobs)
+    {
+        $Category = $Job.Category
+        $OutputFolder = "D:\Temp\$ServerName\$Category"
+        $DoesFolderExist = Test-Path $OutputFolder
+        $null = if (!$DoesFolderExist){MKDIR "$OutputFolder"}
+
+
+        $Filename = "$OutputFolder\" + ($Job -replace "[[]", '' -replace "[]]" -replace "[|]", "-" -replace "[:]", "-") +  ".sql" 
+        
+        try 
+        {
+            $Job | foreach {$_.Script()} | Out-File $Filename
+        }
+        catch
+        {
+            foreach ($e in $Error) 
+            {
+                Write-Host $e
+            }
+            #Write-Host $Filename
+        }
+
+    }
+}
