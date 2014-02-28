@@ -1,0 +1,11 @@
+create function MonthYear (@DateTime datetime)
+returns varchar(16) with schemabinding
+as
+begin
+
+	return
+	(
+		datename(mm, @DateTime) + '-' + convert(char(4), datepart(yyyy, @DateTime)) 
+	)
+
+end
