@@ -1,0 +1,11 @@
+create Function RemoveNonNumericCharacters(@string varchar(max))
+
+returns varchar(max)
+as
+begin
+    while patindex('%[^0-9]%', @string) > 0
+    begin
+        set @string = stuff(@string, patindex('%[^0-9]%', @string), 1, '')
+    end
+    return @string
+end
