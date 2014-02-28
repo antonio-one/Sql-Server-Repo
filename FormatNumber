@@ -1,0 +1,117 @@
+CREATE FUNCTION FormatNumber (
+
+    @Number decimal(38,15), 
+    @DecimalPlaces int = 0, 
+    @Format varchar(115) = '',
+    @IfZero varchar(115) = ''
+)   returns varchar(256)
+as  
+begin 
+
+	/* 
+	Valid @Format arguments (space between args is ignored)
+	 nothing -  returns the number unformatted
+	 $ - return the number preceded by a '$' sign 
+	 % - return the number followed by a '%' sign 
+	 , - place a , every 3 zeros in the whole number portion (thousands)
+	 c - divide the number by 100 - intended to calc percent values
+	 i - returns integer portion only with no formatting except commas if requested
+	 d - returns the decimal portion only with no formatting except commas if requested
+	 b - returns a blank string for 0 values
+	 ( - encloses negative numbers in brackets
+	 l - use leading zero
+	 r[int]r - rounds number outside of the decimal context
+	 z[int]z - zero fills to [int] width
+	*/
+
+	DECLARE @fmtxt varchar(25), @parsetxt varchar(50)
+		 , @parsetxtdec varchar(50)
+		 , @decptloc int, @zerotext varchar(100)
+		 , @intpart varchar(25), @decpart varchar(25)
+		 , @ERR_type varchar(15), @roundto varchar(2)
+		 , @fillto varchar(50), @fillto# varchar(2)
+ 
+	--A little error checking is in order
+	IF @Number IS NULL 
+		RETURN  '{ERR-null passed}'
+	ELSE IF @DecimalPlaces < 0 
+		RETURN  '{ERR-decimal spec <0}' 
+	ELSE IF @DecimalPlaces >15 
+		RETURN  '{ERR-decimal spec >15}'
+ 
+	-- Handle zero values first
+	IF @Number = 0  RETURN @IfZero 
+ 
+	-- Now 'C'alculate the percentage if requested using the '%c' arg.
+	IF CHARINDEX('%c',@Format) > 0  SET @Number = @Number * 100
+ 
+	-- Do rounding outside if applicable
+	IF CHARINDEX('r',@Format) > 0 BEGIN
+		SET @roundto = SUBSTRING(@Format,CHARINDEX('r', @Format)+1, 115)
+		SET @roundto = LEFT(@roundto,CHARINDEX('r',@roundto)-1)
+		SET @Number = round(@Number,cast(@roundto as integer))
+	END
+ 
+	-- Get the parsetext variable
+	IF CHARINDEX(',',@Format) > 0
+		SET @parsetxt = CONVERT(varchar(100),CAST(@Number as money),1)
+	ELSE
+		SET @parsetxt = CONVERT(varchar(100), @Number)
+ 
+	-- Grab some basic stuff
+	SET @decptloc = ISNULL(CHARINDEX('.',@parsetxt),0)
+ 
+	IF @decptloc = 0 
+	   RETURN @parsetxt
+	ELSE
+	   SET @intpart = SUBSTRING(@parsetxt,1,@decptloc-1)
+ 
+	-- Handle leading zeros
+	IF CHARINDEX('l',@Format) = 0 AND @intpart = '0' SET @intpart = ''
+ 
+	-- Now build the decimal portion of the result
+	SET @parsetxt = CONVERT(varchar(100),ROUND(@Number,@DecimalPlaces),2)
+	SET @decptloc = ISNULL(CHARINDEX('.',@parsetxt),0)
+ 
+
+	IF @DecimalPlaces = 0
+	   SET @decpart = ''
+	ELSE 
+	   SET @decpart =  LEFT(SUBSTRING(@parsetxt 
+										 + REPLICATE('0',@DecimalPlaces)
+									 ,@decptloc
+									 ,@decptloc+50)
+						   ,@DecimalPlaces+1)
+ 
+	--ASSEMBLE THE RESULTS --
+ 
+	-- for just integer portion
+	IF CHARINDEX('i',@Format) > 0 
+	   RETURN @intpart
+	-- for just decimal portion
+	IF CHARINDEX('d',@Format) > 0 
+	   RETURN  + @decpart
+ 
+	SET @fmtxt =  @intpart  + @decpart
+	--SET @fmtxt =  @intpart +'*'+ @decpart
+ 
+	-- Handle brackets if requested
+	IF CHARINDEX('(',@Format) > 0 AND @Number < 0 
+			 SET @fmtxt = '(' + RIGHT(@fmtxt,LEN(@fmtxt)-1) + ')'
+ 
+	-- Add the symbols
+	IF CHARINDEX('$',@Format) > 0
+		SET @fmtxt = '$' + @fmtxt
+	ELSE IF CHARINDEX('%',@Format) > 0
+		SET @fmtxt = @fmtxt + '%'
+ 
+	--Handle zero filling
+	IF CHARINDEX('z',@Format) > 0 BEGIN
+	  SET @fillto = SUBSTRING(@Format,CHARINDEX('z',@Format)+1,115)
+	  SET @fillto# = CAST(LEFT(@fillto,CHARINDEX('z',@fillto)-1) as INT)
+	  SET @fmtxt = RIGHT(REPLICATE('0',@fillto#) + @fmtxt,@fillto#)
+	END
+ 
+	RETURN  @fmtxt
+ 
+END
