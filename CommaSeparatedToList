@@ -1,0 +1,33 @@
+create function CommaSeparatedToList ( @String nvarchar(256) )
+returns @SearchTerm table (Term nvarchar(256))
+as
+begin
+
+declare @Term nvarchar(256) = ''
+
+if right(@String,1) != ','
+begin
+	set @String = @String + ','
+end
+
+declare @StartChar int = 1
+declare @EndChar int = len(@String) + 2
+
+while @StartChar < @EndChar 
+begin
+
+	set @Term = @Term + substring(@String, @StartChar, 1)
+	
+	if substring(@String, @StartChar, 1) = ','
+	begin
+		insert @SearchTerm values (replace(@Term, ',',''))
+		set @Term = ''
+	end
+
+	set @StartChar += 1
+
+end
+
+return
+
+end
