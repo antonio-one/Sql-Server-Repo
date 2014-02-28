@@ -1,0 +1,43 @@
+create function ProperCase(@Text as varchar(512)) 
+returns varchar(512) as
+begin
+
+	declare @Reset bit
+	declare @Ret varchar(512)
+	declare @i int
+	declare @c char(1)
+
+	select @Reset = 1, @i=1, @Ret = ''
+
+	while @i <= len(@Text)
+	
+		select
+			@c= substring(@Text,@i,1),
+			@Ret = @Ret + case 
+								when @Reset=1 then upper(@c) 
+								else lower(@c) 
+							end,
+			@Reset = 
+			case 
+				when
+				( 
+					case 
+						when substring(@Text,@i-4,5) like '_[a-z] [dol]''' then 1 
+						when substring(@Text,@i-4,5) like '_[a-z] [d][i]' then 1 
+						when substring(@Text,@i-4,5) like '_[a-z] [m][c]' then 1 
+						else 0 
+					end = 1 
+				) then 1 
+				else 
+				(
+					case 
+						when @c like '[a-za-z]' or @c in ('''') then 0 
+						else 1 
+					end
+				) 
+			end,
+	@i = @i +1
+	
+	return @Ret 
+
+end
