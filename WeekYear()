@@ -1,0 +1,11 @@
+create function WeekYear (@DateTime datetime) 
+returns varchar(7) with schemabinding
+as
+begin
+
+	return
+	(
+		convert(varchar(2), datepart(ww, @DateTime)) + '-' + convert(char(4), datepart(yyyy, @DateTime))
+	)
+
+end
