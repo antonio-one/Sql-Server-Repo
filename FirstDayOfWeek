@@ -1,0 +1,19 @@
+create function FirstDayOfWeek (@DateTime datetime)
+returns date with schemabinding
+as
+begin
+
+	return
+	(
+		case 
+			when datename(dw, @DateTime) = 'Monday'		then dateadd(dd, -1, convert(date, @DateTime))
+			when datename(dw, @DateTime) = 'Tuesday'	then dateadd(dd, -2, convert(date, @DateTime))
+			when datename(dw, @DateTime) = 'Wednesday'	then dateadd(dd, -3, convert(date, @DateTime))
+			when datename(dw, @DateTime) = 'Thursday'	then dateadd(dd, -4, convert(date, @DateTime))
+			when datename(dw, @DateTime) = 'Friday'		then dateadd(dd, -5, convert(date, @DateTime))
+			when datename(dw, @DateTime) = 'Saturday'	then dateadd(dd, -6, convert(date, @DateTime))
+			when datename(dw, @DateTime) = 'Sunday'		then convert(date, @DateTime)
+		end
+	)
+
+end
