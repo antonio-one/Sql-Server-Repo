@@ -1,0 +1,11 @@
+create function Yesterday()
+Returns date
+As
+Begin
+
+	Return
+	(
+		Select dateadd(dd, -1, convert(date, getdate()))
+	)
+
+End
