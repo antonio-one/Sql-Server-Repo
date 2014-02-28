@@ -1,0 +1,9 @@
+create function DateKey (@datetime datetime)
+returns int
+as
+begin
+	return
+	(
+		convert(int, convert(char(8), @datetime, 112))
+	)
+end
