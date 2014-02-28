@@ -1,0 +1,23 @@
+create function SpaceOutCamelCase ( @String varchar(256) )
+returns varchar(512)
+as
+begin
+
+	declare 
+		@Location int = 1,
+		@ASCII int,
+		@Char varchar(2),
+		@NewString varchar(512) = ''
+
+	while @Location < ( len(@String) + 1 )
+	begin
+
+		set @ASCII = ascii(substring(@String, @Location, 1))
+		set @Char = iif( (@ASCII between 65 and 90), (' ' + char(@ASCII)), char(@ASCII))
+		set @NewString = @NewString + @Char
+		set @Location += 1
+	end
+	
+	return ltrim(@NewString)
+
+end
