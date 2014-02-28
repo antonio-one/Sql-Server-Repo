@@ -1,0 +1,27 @@
+create function StringToDate (@DateString varchar(23), @DateTypeId tinyint)
+returns datetime
+as
+begin
+
+/* 
+	DateTypes:	
+	1 = 2013-08-03T20:28:17.2125994Z
+	2 = 2013-08-03T20:28:26.7470116+00:00
+*/		
+
+	if @DateTypeId = 1
+	begin
+		set @DateString = left(replace(replace(@DateString, 'T', ' '), 'Z', ''), 23)
+	end
+	else if @DateTypeId = 2
+	begin
+		set @DateString = left(replace(@DateString, 'T', ' '), 23)
+	end
+	else
+	begin
+		set @DateString = null
+	end
+
+	return convert(datetime, @DateString, 121)
+
+end
