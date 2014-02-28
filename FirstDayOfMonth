@@ -1,0 +1,13 @@
+create function FirstDayOfMonth (@DateTime datetime = null)
+returns datetime with schemabinding
+as
+begin
+
+	set @DateTime = isnull(@DateTime, getutcdate())
+
+	return
+	(
+		dateadd(dd, 1-datepart(dd, @DateTime) ,convert(char(8), @DateTime, 112))
+	)
+
+end
