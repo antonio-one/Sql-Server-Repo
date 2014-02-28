@@ -1,0 +1,8 @@
+create function Today()
+returns date
+as
+begin
+
+	return getutcdate()
+	
+end
