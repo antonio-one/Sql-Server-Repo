@@ -1,0 +1,8 @@
+create function Tomorrow()
+returns date
+as
+begin
+
+	return dateadd(dd, 1, getdate())
+
+end
