@@ -1,0 +1,11 @@
+create function DateHour (@DateTime datetime) 
+returns smalldatetime with schemabinding
+as
+begin
+
+	return 
+	(
+		dateadd(hh, datepart(hh, @DateTime), convert(char(8), @DateTime, 112))
+	)
+
+end
