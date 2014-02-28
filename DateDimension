@@ -1,0 +1,193 @@
+create function DateDimension (@DateFrom date, @DateTo date)
+returns @DateDimension table
+(
+	DateKey int,
+	FullDate date,
+	DayOfWeek smallint,
+	DayOfMonth smallint,
+	DayOfYear smallint,
+	DayName varchar(9), 
+	DayNameAbbrev char(3),
+	[Weekday] bit,
+	WeekOfYear smallint,
+	WeekBeginDate date, 
+	WeekBeginDateKey int,
+	MonthNumber smallint,
+	MonthName varchar(9), 
+	MonthNameAbbrev char(3),
+	Quarter smallint,
+	Year smallint,
+	YearMonth int,
+	FiscalMonthNumber smallint,
+	FiscalQuarter smallint,
+	FiscalYear smallint,
+	LastDayInMonth bit,
+	SameDayLastYear date
+)
+as
+begin
+
+	;With Calendar As 
+	(
+		Select 
+			convert(varchar(8), @DateFrom, 112)	As 'DateKey',
+			convert(date, @DateFrom) As 'FullDate',
+			datepart(weekday, @DateFrom) As 'DayOfWeek',
+			datepart(dd, @DateFrom) As 'DayOfMonth',
+			datepart(dayofyear, @DateFrom) As 'DayOfYear',
+			datename(weekday, @DateFrom) As 'DayName',
+			left(datename(weekday, @DateFrom), 3) As 'DayNameAbbrev',
+			Case 
+				When datepart(weekday, @DateFrom) in (2,3,4,5,6) Then 1 
+				Else 0
+			End As 'Weekday',
+			datepart(ww, @DateFrom) As 'WeekOfYear',
+			Case	
+				When datepart(weekday, @DateFrom) = 2 Then convert(date, @DateFrom)
+				Else dateadd(dd, -datepart(weekday, @DateFrom), convert(date, @DateFrom))
+			End As 'WeekBeginDate',
+			Case	
+				When datepart(weekday, @DateFrom) = 2 Then convert(varchar(8), @DateFrom, 112)
+				Else convert(varchar(8), dateadd(dd, -datepart(weekday, @DateFrom), convert(date, @DateFrom)), 112)
+			End As WeekBeginDateKey,
+			datepart(mm, @DateFrom) As 'MonthNumber',
+			datename(mm, @DateFrom) As 'MonthName',
+			left(datename(mm, @DateFrom),3) As 'MonthNameAbbrev',
+			datepart(qq, @DateFrom) As 'Quarter',
+			datepart(yyyy, @DateFrom) As 'Year',
+			convert(int, left(convert(varchar(8), @DateFrom, 112), 6)) As 'YearMonth', 
+			Case 
+				When datepart(mm, @DateFrom) In (4,5,6,7,8,9,10,11,12) Then datepart(mm, @DateFrom) - 3
+				Else datepart(mm, @DateFrom) + 9
+			End As 'FiscalMonthNumber',
+			Case
+				When datepart(qq, @DateFrom)  > 1 Then datepart(qq, @DateFrom) - 1
+				Else 4
+			End As 'FiscalQuarter',
+			Case	
+				When datepart(mm, @DateFrom) Not In (1,2,3) Then datepart(yyyy, @DateFrom) 
+				Else datepart(yyyy, @DateFrom) - 1
+			End As 'FiscalYear',
+			Case 
+				When datepart(dd, dateadd(dd, 1, @DateFrom)) = 1 Then 1
+				Else 0
+			End As 'LastDayInMonth',
+			dateadd(yyyy, -1, convert(date, @DateFrom)) As SameDayLastYear
+
+		Union All
+	
+		Select 
+			convert(varchar(8), dateadd(dd, 1, FullDate), 112),
+			dateadd(dd, 1, FullDate),
+			datepart(weekday, dateadd(dd, 1, FullDate)),
+			datepart(dd, dateadd(dd, 1, FullDate)),
+			datepart(dayofyear, dateadd(dd, 1, FullDate)),
+			datename(weekday, dateadd(dd, 1, FullDate)),
+			left(datename(weekday, dateadd(dd, 1, FullDate)), 3),
+			Case 
+				When datepart(weekday, dateadd(dd, 1, FullDate)) in (2,3,4,5,6) Then 1 
+				Else 0
+			End,
+			datepart(ww, dateadd(dd, 1, FullDate)) As WeekOfYear,
+			Case	
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 2 Then dateadd(dd, 1, FullDate)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 3 Then FullDate
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 4 Then dateadd(dd, -1, FullDate)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 5 Then dateadd(dd, -2, FullDate)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 6 Then dateadd(dd, -3, FullDate)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 7 Then dateadd(dd, -4, FullDate)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 1 Then dateadd(dd, -5, FullDate)
+				Else null
+			End,
+			Case	
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 2 Then convert(varchar(8), dateadd(dd, 1, FullDate), 112)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 3 Then convert(varchar(8), FullDate, 112)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 4 Then convert(varchar(8), dateadd(dd, -1, FullDate), 112)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 5 Then convert(varchar(8), dateadd(dd, -2, FullDate), 112)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 6 Then convert(varchar(8), dateadd(dd, -3, FullDate), 112)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 7 Then convert(varchar(8), dateadd(dd, -4, FullDate), 112)
+				When datepart(weekday, dateadd(dd, 1, FullDate)) = 1 Then convert(varchar(8), dateadd(dd, -5, FullDate), 112)
+				Else null
+			End,
+			datepart(mm, dateadd(dd, 1, FullDate)),
+			datename(mm, dateadd(dd, 1, FullDate)),
+			left(datename(mm, dateadd(dd, 1, FullDate)),3),
+			datepart(qq, dateadd(dd, 1, FullDate)),
+			datepart(yyyy, dateadd(dd, 1, FullDate)),
+			convert(int, left(convert(varchar(8), dateadd(dd, 1, FullDate), 112), 6)), 
+			Case 
+				When datepart(mm, dateadd(dd, 1, FullDate)) In (4,5,6,7,8,9,10,11,12) Then datepart(mm, dateadd(dd, 1, FullDate)) - 3
+				Else datepart(mm, dateadd(dd, 1, FullDate)) + 9
+			End,
+			Case 
+				When datepart(qq, dateadd(dd, 1, FullDate))  > 1 Then datepart(qq, dateadd(dd, 1, FullDate)) - 1
+				Else 4
+			End,
+			Case	
+				When datepart(mm, dateadd(dd, 1, FullDate)) Not In (1,2,3) Then datepart(yyyy, dateadd(dd, 1, FullDate)) 
+				Else datepart(yyyy, dateadd(dd, 1, FullDate)) - 1
+			End,
+			Case 
+				When datepart(dd, dateadd(dd, 2, FullDate)) = 1 Then 1
+				Else 0
+			End,
+			dateadd(yyyy, -1, dateadd(dd, 1, FullDate))
+
+		From Calendar
+		Where FullDate < @DateTo
+	)
+
+	Insert @DateDimension
+	(
+		DateKey,
+		FullDate,
+		DayOfWeek,
+		DayOfMonth,
+		DayOfYear,
+		DayName, 
+		DayNameAbbrev,
+		[Weekday] ,
+		WeekOfYear,
+		WeekBeginDate, 
+		WeekBeginDateKey,
+		MonthNumber,
+		MonthName, 
+		MonthNameAbbrev,
+		Quarter,
+		Year,
+		YearMonth,
+		FiscalMonthNumber,
+		FiscalQuarter,
+		FiscalYear,
+		LastDayInMonth,
+		SameDayLastYear
+	)
+	select 	
+		DateKey,
+		FullDate,
+		DayOfWeek,
+		DayOfMonth,
+		DayOfYear,
+		DayName, 
+		DayNameAbbrev,
+		[Weekday] ,
+		WeekOfYear,
+		WeekBeginDate, 
+		WeekBeginDateKey,
+		MonthNumber,
+		MonthName, 
+		MonthNameAbbrev,
+		Quarter,
+		Year,
+		YearMonth,
+		FiscalMonthNumber,
+		FiscalQuarter,
+		FiscalYear,
+		LastDayInMonth,
+		SameDayLastYear
+	from Calendar
+	option (maxrecursion 0)
+
+	return
+
+end
