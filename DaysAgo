@@ -1,0 +1,12 @@
+
+create function DaysAgo (@Days int)
+returns date
+as
+begin
+	
+	return
+	(
+		select dateadd(dd,-@Days,getutcdate())
+	)
+
+end
