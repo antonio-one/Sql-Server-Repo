@@ -1,0 +1,29 @@
+set transaction isolation level serializable
+
+declare @err int
+
+begin tran
+	exec sp_rename 'err.WebSiteLog_','WebSiteLog_changeme'
+
+		set @err = @@error
+		if @err > 0
+		begin 
+			rollback
+		end
+
+	exec sp_rename 'err.WebSiteLog','WebSiteLog_'
+
+		set @err = @@error
+		if @err > 0
+		begin 
+			rollback
+		end
+
+	exec sp_rename 'err.WebSiteLog_changeme','WebSiteLog'
+		set @err = @@error
+		if @err > 0
+		begin 
+			rollback
+		end
+
+commit tran
