@@ -1,0 +1,96 @@
+CREATE TABLE [dbo].[SsisConfiguration](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[DateCreated] [datetime] NOT NULL,
+	[Domain] [nvarchar](128) NOT NULL,
+	[Package] [nvarchar](50) NOT NULL,
+	[Variable] [nvarchar](50) NOT NULL,
+	[Value] [nvarchar](1024) NULL,
+ CONSTRAINT [PK_SsisConfiguration] PRIMARY KEY CLUSTERED 
+(
+	[Domain] ASC,
+	[Package] ASC,
+	[Variable] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [ACTIVE]
+) ON [ACTIVE]
+
+go
+
+create procedure [dbo].[SsisConfigurationGet] @package nvarchar(255), @domain varchar(128) = null
+as
+begin
+
+	set nocount on
+
+	begin try
+
+     declare @variable table 
+	 (
+          id int identity(1,1),
+		  name nvarchar(255)
+     )
+    
+     insert @variable (name)
+     select variable
+     from dbo.SsisConfiguration
+     where domain = isnull(@domain, dbo.GetDomain()) and package = @package
+     order by variable
+	 
+     declare @columns nvarchar(2048)
+               , @i smallint
+               , @j smallint
+               , @sqlcmd nvarchar(max)
+               , @sqlpar nvarchar(255)
+               , @length smallint
+              
+     select @columns = '',
+          @i = 0,
+          @j = max(id) + 1,
+          @sqlcmd = '',
+          @sqlpar = '@_domain varchar(128), @_package nvarchar(50)'
+     from @variable
+    
+     while @i < @j
+     begin
+    
+          select @columns = @columns + name + ','
+          from @variable
+          where id = @i
+         
+          set @i = @i + 1
+     end
+    
+     set @length = len(@columns) - 1
+     set @columns = left(@columns, @length)
+    
+     set @sqlcmd = N'
+     select ' + @columns + '
+     from (
+          select s1.[variable], coalesce(s1.[value], s2.[value]) as value
+          from dbo.ssisconfiguration s1
+			left outer join dbo.ssisconfiguration s2
+				on s1.Domain = s2.Domain and s1.Variable = s2.Variable and s2.Package = ''DEFAULT''
+          where s1.domain = isnull(@_domain, dbo.getdomain()) and s1.package = @_package
+          ) as sourcedata
+     pivot (
+          max(value)
+          for variable in (' + @columns + ')
+          ) as pivotdata'
+
+     exec sp_executesql @sqlcmd, @sqlpar, @_domain = @domain, @_package = @package
+
+	end try
+
+	begin catch
+
+		raiserror('wrong package name parameter value or it does not exist in ssis configuration',11,1)
+
+	end catch
+
+     print @sqlcmd
+	 print @domain
+	 print @package
+
+         
+end
+
+go
