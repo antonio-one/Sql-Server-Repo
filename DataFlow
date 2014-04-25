@@ -1,0 +1,20 @@
+create view [dbo].[DataFlow]
+as
+
+select 
+	s.name as TableSchema,
+	o.name as TableName,
+	sum(c.[length]) as RowLength,
+	cast(10485760 / sum(c.[length]) as int) as MaxRows,
+	cast((10485760 / sum(c.[length])) * sum(c.[length]) as int) as BufferSize,
+	cast(((10485760 / sum(c.[length])) * sum(c.[length]) * 0.90) as int) as MaxInsertCommitSize
+from sysobjects as o		
+	inner join syscolumns as c	
+		on o.id = c.id
+	inner join sys.objects as o2 
+		on o.id = o2.object_id
+	inner join sys.schemas as s
+		on o2.schema_id = s.schema_id
+where (o.xtype = 'u') 
+	and (o.[type] = 'u') 
+group by s.name, o.name
