@@ -1,0 +1,58 @@
+create procedure [dbo].[JobsExecuting_PerfmonCounter]
+		@JobName varchar(100) = NULL OUTPUT,
+		@job_owner sysname = 'sa',
+		@currentstatus varchar(20) = NULL OUTPUT,
+		@lastactive int = NULL OUTPUT,
+		@threshold smallint = 60, -- Default if job has not responded in 60 mins, overridden by passing value.
+		@count int = 0 OUTPUT
+
+as
+begin
+SET NOCOUNT ON
+       declare @JobsExecuting table
+       (
+              job_id uniqueidentifier null,
+              last_run_date nvarchar (20) null,
+              last_run_time nvarchar (20) null,
+              next_run_date nvarchar (20) null,
+              next_run_time nvarchar (20) null,
+              next_run_schedule_id int null,
+              requested_to_run int null,
+              request_source int null,
+              request_source_id sysname collate database_default null,
+              running int null,
+              current_step int null,
+              current_retry_attempt int null,
+              job_state int null
+       )
+
+       declare @is_sysadmin int
+	   set @is_sysadmin = isnull (is_srvrolemember ('sysadmiN'), 0)
+
+       insert into @JobsExecuting
+       execute master.dbo.xp_sqlagent_enum_jobs @is_sysadmin, @job_owner
+
+       if @@rowcount = 0
+       begin
+              insert @JobsExecuting
+			  values (null,null,null,null,null,null,null,null,null,null,null,null,null)
+       end
+
+
+       update @JobsExecuting
+       set last_run_time = right ('000000' + last_run_time, 6),
+              next_run_time = right ('000000' + next_run_time, 6)
+
+       SET @count = (select 
+              COUNT(j.name) as 'Count'
+       from @JobsExecuting x
+              left join msdb.dbo.sysjobs j on x.job_id = j.job_id
+              left outer join msdb.dbo.syscategories c on j.category_id = c.category_id
+              left outer join msdb.dbo.sysjobhistory h on x.job_id = h.job_id and x.last_run_date = h.run_date and x.last_run_time = h.run_time and h.step_id = 0
+			  left join master..sysprocesses p ON substring(p.program_name,32,8) = dba.[dbo].[sysjobs_getprocessid](j.job_id)
+					and p.program_name like 'SQLAgent - TSQL JobStep (Job %'
+       where x.running = 1
+	   AND isnull(DATEDIFF(mi, p.last_batch, getdate()), 0) >= @threshold
+	   and j.category_id NOT IN (8, 101, 104)) --exclude data collector job category for system stats
+	   
+	   end
